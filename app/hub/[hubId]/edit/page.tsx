@@ -9,10 +9,7 @@ import {
   Settings,
   FileText,
   History,
-  Users,
-  Star,
   Eye,
-  EyeOff,
   Save,
   X,
   Plus,
@@ -21,7 +18,6 @@ import {
   Upload,
   Download,
   Trash2,
-  Calendar,
   User,
   FileIcon,
 } from "lucide-react";
@@ -163,50 +159,6 @@ export default function HubEditPage() {
     if (!hubId || !user) return;
     loadData();
   }, [hubId, user]);
-
-  const fetchHubData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const [hubResponse, filesResponse] = await Promise.all([
-        fetch(`/api/hubs/${hubId}`),
-        fetch(`/api/files?hubId=${hubId}`),
-      ]);
-
-      const hubResult = await hubResponse.json();
-      if (!hubResult.success) {
-        setError(hubResult.message || "Failed to fetch hub");
-        return;
-      }
-
-      const hubData = hubResult.data as HubData;
-
-      // Check if user is the owner
-      if (hubData.ownerId !== user?.uid) {
-        setError("You are not authorized to edit this hub");
-        return;
-      }
-
-      setHub(hubData);
-      setFormData({
-        title: hubData.title,
-        description: hubData.description,
-        tags: hubData.tags || [],
-        visibility: hubData.visibility,
-      });
-
-      const filesResult = await filesResponse.json();
-      if (filesResult.success) {
-        setFiles(filesResult.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching hub data:", error);
-      setError("An error occurred while loading the hub");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSave = async () => {
     if (!hub) return;
@@ -640,17 +592,17 @@ export default function HubEditPage() {
                         {activity.metadata && (
                           <div className="text-sm text-gray-600 mt-1">
                             {activity.type === "file_uploaded" &&
-                              activity.metadata.fileName && (
-                                <span>
-                                  File: {activity.metadata.fileName as string}
-                                </span>
-                              )}
+                            activity.metadata.fileName ? (
+                              <span>
+                                File: {String(activity.metadata.fileName)}
+                              </span>
+                            ) : null}
                             {activity.type === "hub_updated" &&
-                              activity.metadata.hubTitle && (
-                                <span>
-                                  Hub: {activity.metadata.hubTitle as string}
-                                </span>
-                              )}
+                            activity.metadata.hubTitle ? (
+                              <span>
+                                Hub: {String(activity.metadata.hubTitle)}
+                              </span>
+                            ) : null}
                           </div>
                         )}
                         <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">

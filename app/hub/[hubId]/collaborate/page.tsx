@@ -71,11 +71,6 @@ export default function CollaboratePage() {
   const [inviteMessage, setInviteMessage] = useState("");
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    if (!hubId || !user) return;
-    fetchData();
-  }, [hubId, user, fetchData]);
-
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -147,6 +142,11 @@ export default function CollaboratePage() {
     }
   }, [hubId, user]);
 
+  useEffect(() => {
+    if (!hubId || !user) return;
+    fetchData();
+  }, [hubId, user, fetchData]);
+
   const handleInviteCollaborator = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail || sending) return;
@@ -162,6 +162,7 @@ export default function CollaboratePage() {
       setInviteEmail("");
       setInviteMessage("");
     } catch (error) {
+      console.error("Failed to send invitation:", error);
       alert("Failed to send invitation");
     } finally {
       setSending(false);
@@ -204,6 +205,7 @@ export default function CollaboratePage() {
         }
       }
     } catch (error) {
+      console.error("Failed to update request:", error);
       alert("Failed to update request");
     }
   };
