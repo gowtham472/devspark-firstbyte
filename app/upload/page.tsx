@@ -537,7 +537,7 @@ export default function UploadPage() {
                   isUploading ||
                   (!existingHub &&
                     (!formData.title || !formData.description)) ||
-                  (existingHub && files.length === 0)
+                  (existingHub !== null && files.length === 0)
                 }
                 className="flex-1"
               >

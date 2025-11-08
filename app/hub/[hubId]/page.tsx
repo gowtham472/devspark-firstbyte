@@ -3,7 +3,24 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Card } from "@/components/ui";
+import { Card, Button, Badge } from "@/components/ui";
+import {
+  Star,
+  GitFork,
+  Eye,
+  Settings,
+  Download,
+  Upload,
+  Users,
+  History,
+  FileText,
+  Lock,
+  Globe,
+  User,
+  FileIcon,
+  MoreHorizontal,
+  Edit3,
+} from "lucide-react";
 
 interface HubData {
   id: string;
@@ -29,7 +46,35 @@ interface FileData {
   downloadUrl: string;
   uploadedAt: string;
   uploadedBy: string;
+  uploaderName?: string;
+  version?: number;
 }
+
+interface ActivityItem {
+  id: string;
+  type:
+    | "hub_created"
+    | "hub_updated"
+    | "file_uploaded"
+    | "file_deleted"
+    | "file_updated";
+  message: string;
+  userId: string;
+  userName?: string;
+  timestamp: string;
+  metadata?: { fileName?: string; [key: string]: unknown };
+}
+
+interface Collaborator {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: "owner" | "admin" | "write" | "read";
+  joinedAt: string;
+}
+
+type TabType = "files" | "history" | "collaborators" | "settings";
 
 export default function HubPage() {
   const params = useParams();
@@ -39,45 +84,67 @@ export default function HubPage() {
 
   const [hub, setHub] = useState<HubData | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
+  const [history, setHistory] = useState<ActivityItem[]>([]);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [activeTab, setActiveTab] = useState<TabType>("files");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!hubId) return;
 
-    fetchHubData();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch all data in parallel
+        const [hubResponse, filesResponse, historyResponse] = await Promise.all(
+          [
+            fetch(`/api/hubs/${hubId}`),
+            fetch(`/api/files?hubId=${hubId}`),
+            fetch(`/api/hubs/${hubId}/history`),
+          ]
+        );
+
+        const hubResult = await hubResponse.json();
+        if (!hubResult.success) {
+          setError(hubResult.message || "Failed to fetch hub");
+          return;
+        }
+
+        setHub(hubResult.data);
+
+        const filesResult = await filesResponse.json();
+        if (filesResult.success) {
+          setFiles(filesResult.data || []);
+        }
+
+        const historyResult = await historyResponse.json();
+        if (historyResult.success) {
+          setHistory(historyResult.data || []);
+        }
+
+        // Mock collaborators for now
+        setCollaborators([
+          {
+            id: hubResult.data.ownerId,
+            name: hubResult.data.ownerName || "Owner",
+            email: "owner@example.com",
+            role: "owner",
+            joinedAt: hubResult.data.createdAt,
+          },
+        ]);
+      } catch (error) {
+        console.error("Error fetching hub data:", error);
+        setError("An error occurred while loading the hub");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, [hubId]);
-
-  const fetchHubData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Fetch hub details
-      const hubResponse = await fetch(`/api/hubs/${hubId}`);
-      const hubResult = await hubResponse.json();
-
-      if (!hubResult.success) {
-        setError(hubResult.message || "Failed to fetch hub");
-        return;
-      }
-
-      setHub(hubResult.data);
-
-      // Fetch hub files
-      const filesResponse = await fetch(`/api/files?hubId=${hubId}`);
-      const filesResult = await filesResponse.json();
-
-      if (filesResult.success) {
-        setFiles(filesResult.data || []);
-      }
-    } catch (error) {
-      console.error("Error fetching hub data:", error);
-      setError("An error occurred while loading the hub");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleStarHub = async () => {
     if (!user || !hub) return;
@@ -144,150 +211,410 @@ export default function HubPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Hub Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex items-start justify-between mb-4">
+      {/* Header Section */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                {hub.title}
-              </h1>
+              <div className="flex items-center gap-2 mb-2">
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {hub.title}
+                </h1>
+                <Badge
+                  variant={
+                    hub.visibility === "public" ? "primary" : "secondary"
+                  }
+                >
+                  {hub.visibility === "public" ? (
+                    <>
+                      <Globe className="h-3 w-3 mr-1" />
+                      Public
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="h-3 w-3 mr-1" />
+                      Private
+                    </>
+                  )}
+                </Badge>
+              </div>
+
               <p className="text-gray-600 mb-4">{hub.description}</p>
 
               {/* Tags */}
               {hub.tags && hub.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {hub.tags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                    >
+                    <Badge key={index} variant="secondary" className="text-xs">
                       {tag}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               )}
 
-              {/* Hub Stats */}
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>⭐ {hub.stars} stars</span>
-                <span>📁 {files.length} files</span>
-                <span>👁️ {hub.visibility}</span>
-                <span>📅 {new Date(hub.createdAt).toLocaleDateString()}</span>
+              {/* Stats */}
+              <div className="flex items-center gap-6 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <Star className="h-4 w-4" />
+                  <span>{hub.stars}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" />
+                  <span>Watching</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <GitFork className="h-4 w-4" />
+                  <span>Fork</span>
+                </div>
               </div>
             </div>
 
-            {/* Hub Actions */}
-            <div className="flex items-center gap-3">
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
               {user && !isOwner && (
-                <button
+                <Button
                   onClick={handleStarHub}
-                  className={`px-4 py-2 rounded-lg border transition-colors ${
+                  variant="outline"
+                  size="sm"
+                  className={
                     isStarred
-                      ? "bg-yellow-50 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
-                      : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
-                  }`}
+                      ? "bg-yellow-50 border-yellow-300 text-yellow-700"
+                      : ""
+                  }
                 >
-                  {isStarred ? "⭐ Starred" : "☆ Star"}
-                </button>
+                  <Star
+                    className={`h-4 w-4 mr-1 ${
+                      isStarred ? "fill-current" : ""
+                    }`}
+                  />
+                  {isStarred ? "Starred" : "Star"}
+                </Button>
               )}
 
+              <Button variant="outline" size="sm">
+                <GitFork className="h-4 w-4 mr-1" />
+                Fork
+              </Button>
+
               {isOwner && (
-                <button
+                <Button
                   onClick={() => router.push(`/hub/${hubId}/edit`)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  size="sm"
                 >
-                  Edit Hub
-                </button>
+                  <Settings className="h-4 w-4 mr-1" />
+                  Settings
+                </Button>
               )}
             </div>
           </div>
-
-          {/* Preview Image */}
-          {hub.previewImage && (
-            <div className="mt-4">
-              <img
-                src={hub.previewImage}
-                alt={hub.title}
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Files Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Files</h2>
-            {isOwner && (
+      {/* Navigation Tabs */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-4">
+          <nav className="flex space-x-8" role="tablist">
+            {[
+              {
+                id: "files",
+                label: "Files",
+                icon: FileText,
+                count: files.length,
+              },
+              {
+                id: "history",
+                label: "History",
+                icon: History,
+                count: history.length,
+              },
+              {
+                id: "collaborators",
+                label: "Collaborators",
+                icon: Users,
+                count: collaborators.length,
+              },
+              ...(isOwner
+                ? [
+                    {
+                      id: "settings" as const,
+                      label: "Settings",
+                      icon: Settings,
+                    },
+                  ]
+                : []),
+            ].map(({ id, label, icon: Icon, count }) => (
               <button
-                onClick={() => router.push(`/upload?hubId=${hubId}`)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                key={id}
+                onClick={() => setActiveTab(id as TabType)}
+                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === (id as TabType)
+                    ? "border-orange-500 text-gray-900"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
-                Upload File
+                <Icon className="h-4 w-4" />
+                {label}
+                {count !== undefined && (
+                  <span className="bg-gray-100 text-gray-900 px-2 py-0.5 rounded-full text-xs">
+                    {count}
+                  </span>
+                )}
               </button>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        {activeTab === "files" && (
+          <div className="bg-white rounded-lg border">
+            {/* Files Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-gray-500" />
+                <span className="font-medium">{files.length} files</span>
+              </div>
+              {isOwner && (
+                <Button
+                  onClick={() => router.push(`/upload?hubId=${hubId}`)}
+                  size="sm"
+                >
+                  <Upload className="h-4 w-4 mr-1" />
+                  Upload files
+                </Button>
+              )}
+            </div>
+
+            {/* Files List */}
+            {files.length === 0 ? (
+              <div className="text-center py-12">
+                <FileIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No files yet
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {isOwner
+                    ? "Upload your first file to get started"
+                    : "This hub doesn't have any files yet"}
+                </p>
+                {isOwner && (
+                  <Button onClick={() => router.push(`/upload?hubId=${hubId}`)}>
+                    <Upload className="h-4 w-4 mr-1" />
+                    Upload files
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="divide-y">
+                {files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileIcon className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <h4 className="font-medium text-gray-900">
+                            {file.fileName}
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {(file.fileSize / 1024).toFixed(1)} KB • Updated{" "}
+                            {new Date(file.uploadedAt).toLocaleDateString()} by{" "}
+                            {file.uploaderName || "User"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm">
+                          <History className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
+        )}
 
-          {files.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>No files uploaded yet.</p>
-              {isOwner && (
-                <button
-                  onClick={() => router.push(`/upload?hubId=${hubId}`)}
-                  className="mt-2 text-blue-600 hover:text-blue-700"
-                >
-                  Upload the first file
-                </button>
+        {activeTab === "history" && (
+          <div className="bg-white rounded-lg border">
+            <div className="p-4 border-b">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-gray-500" />
+                <span className="font-medium">Activity Timeline</span>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {history.length === 0 ? (
+                <div className="text-center py-8">
+                  <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-gray-500">No activity history available</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {history.map((activity) => (
+                    <div key={activity.id} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            activity.type === "hub_created"
+                              ? "bg-green-500"
+                              : activity.type === "hub_updated"
+                              ? "bg-blue-500"
+                              : activity.type === "file_uploaded"
+                              ? "bg-purple-500"
+                              : activity.type === "file_deleted"
+                              ? "bg-red-500"
+                              : "bg-gray-500"
+                          }`}
+                        />
+                        {history.indexOf(activity) < history.length - 1 && (
+                          <div className="w-0.5 h-6 bg-gray-200 mt-2" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 pb-6">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            {activity.message}
+                          </p>
+                          <time className="text-xs text-gray-500">
+                            {new Date(activity.timestamp).toLocaleDateString()}
+                          </time>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          by {activity.userName || "User"}
+                        </p>
+                        {activity.metadata && activity.metadata.fileName && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            File: {activity.metadata.fileName}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          ) : (
-            <div className="grid gap-4">
-              {files.map((file) => (
+          </div>
+        )}
+
+        {activeTab === "collaborators" && (
+          <div className="bg-white rounded-lg border">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-gray-500" />
+                  <span className="font-medium">
+                    {collaborators.length} collaborators
+                  </span>
+                </div>
+                {isOwner && (
+                  <Button size="sm">
+                    <User className="h-4 w-4 mr-1" />
+                    Invite collaborators
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="divide-y">
+              {collaborators.map((collaborator) => (
                 <div
-                  key={file.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  key={collaborator.id}
+                  className="p-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 font-medium">
-                        {file.fileType?.slice(0, 3).toUpperCase() || "FILE"}
-                      </span>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-gray-500" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">
-                        {file.fileName}
-                      </h3>
+                      <p className="font-medium text-gray-900">
+                        {collaborator.name}
+                      </p>
                       <p className="text-sm text-gray-500">
-                        {(file.fileSize / 1024).toFixed(1)} KB •{" "}
-                        {new Date(file.uploadedAt).toLocaleDateString()}
+                        {collaborator.email}
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <a
-                      href={file.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 text-blue-600 hover:text-blue-700 text-sm"
+                    <Badge
+                      variant={
+                        collaborator.role === "owner" ? "primary" : "secondary"
+                      }
                     >
-                      Download
-                    </a>
-                    <a
-                      href={file.downloadUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                    >
-                      View
-                    </a>
+                      {collaborator.role}
+                    </Badge>
+                    <Button variant="ghost" size="sm">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeTab === "settings" && isOwner && (
+          <div className="space-y-6">
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold mb-4">Hub Settings</h2>
+              <div className="space-y-4">
+                <Button
+                  onClick={() => router.push(`/hub/${hubId}/edit`)}
+                  variant="outline"
+                  className="w-full justify-start"
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  Edit hub details
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="h-4 w-4 mr-2" />
+                  Manage collaborators
+                </Button>
+                <Button variant="outline" className="w-full justify-start">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Advanced settings
+                </Button>
+              </div>
+            </Card>
+
+            <Card className="p-6 border-red-200">
+              <h2 className="text-lg font-semibold mb-4 text-red-600">
+                Danger Zone
+              </h2>
+              <div className="space-y-4">
+                <div className="p-4 border border-red-200 rounded-lg">
+                  <h3 className="font-medium text-red-900 mb-2">
+                    Delete this hub
+                  </h3>
+                  <p className="text-sm text-red-700 mb-4">
+                    Once deleted, all files and data will be permanently
+                    removed.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    Delete hub
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

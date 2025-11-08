@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { UserProfileModal } from "@/components/ui/UserProfileModal";
 import { Search, Star, Eye, Calendar, User, Grid, List } from "lucide-react";
 import Link from "next/link";
 
@@ -17,6 +18,7 @@ interface Hub {
   description: string;
   tags: string[];
   ownerId: string;
+  ownerName?: string;
   visibility: "public" | "private";
   previewImage: string;
   stars: number;
@@ -42,6 +44,8 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState<"recent" | "popular">("recent");
   const [activeTab, setActiveTab] = useState<"hubs" | "users">("hubs");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const popularTags = [
     "Computer Science",
@@ -73,33 +77,59 @@ export default function ExplorePage() {
         });
 
         if (response.success && response.data) {
-          let hubsData = response.data as Hub[];
+          const hubsData = response.data as Hub[];
+
+          // Fetch owner names for each hub
+          const hubsWithOwners = await Promise.all(
+            hubsData.map(async (hub) => {
+              try {
+                const ownerResponse = await apiService.getUser(hub.ownerId);
+                const ownerName =
+                  ownerResponse.success && ownerResponse.data
+                    ? (ownerResponse.data as { name?: string }).name ||
+                      "Unknown User"
+                    : "Unknown User";
+                return { ...hub, ownerName };
+              } catch (error) {
+                console.error("Error fetching owner for hub:", hub.id, error);
+                return { ...hub, ownerName: "Unknown User" };
+              }
+            })
+          );
 
           // Sort hubs
           if (sortBy === "popular") {
-            hubsData = hubsData.sort((a, b) => (b.stars || 0) - (a.stars || 0));
+            hubsWithOwners.sort((a, b) => (b.stars || 0) - (a.stars || 0));
           } else {
-            hubsData = hubsData.sort(
+            hubsWithOwners.sort(
               (a, b) =>
                 new Date(b.createdAt).getTime() -
                 new Date(a.createdAt).getTime()
             );
           }
 
-          setHubs(hubsData);
+          setHubs(hubsWithOwners);
+        } else {
+          console.error("Failed to load hubs:", response.message);
+          setHubs([]);
         }
       } else {
         const response = await apiService.search(
-          searchQuery || "a",
+          searchQuery || "",
           "users",
           20
         );
         if (response.success && response.data) {
           setUsers((response.data as Record<string, UserType[]>).users || []);
+        } else {
+          console.error("Failed to search users:", response.message);
+          setUsers([]);
         }
       }
     } catch (error) {
       console.error("Error loading content:", error);
+      setHubs([]);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -129,6 +159,22 @@ export default function ExplorePage() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const handleUserClick = (userId: string) => {
+    setSelectedUserId(userId);
+    setIsProfileModalOpen(true);
+  };
+
+  const handleOwnerClick = (e: React.MouseEvent, ownerId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleUserClick(ownerId);
+  };
+
+  const closeProfileModal = () => {
+    setIsProfileModalOpen(false);
+    setSelectedUserId(null);
   };
 
   return (
@@ -313,7 +359,16 @@ export default function ExplorePage() {
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-2 text-xs text-text-secondary">
                           <User className="h-3 w-3" />
-                          <span>Owner • {formatDate(hub.createdAt)}</span>
+                          <span>
+                            <button
+                              onClick={(e) => handleOwnerClick(e, hub.ownerId)}
+                              className="hover:text-primary hover:underline transition-colors"
+                            >
+                              {hub.ownerName || "Unknown User"}
+                            </button>
+                            {" • "}
+                            {formatDate(hub.createdAt)}
+                          </span>
                         </div>
 
                         <Button
@@ -342,22 +397,25 @@ export default function ExplorePage() {
                 {users.map((userItem) => (
                   <Card
                     key={userItem.id}
-                    className="p-6 text-center hover:shadow-lg transition-shadow"
+                    className="p-6 text-center hover:shadow-lg transition-shadow cursor-pointer"
+                    onClick={() => handleUserClick(userItem.id)}
                   >
                     <div className="w-16 h-16 bg-primary/20 rounded-full mx-auto mb-4 flex items-center justify-center">
                       <User className="h-8 w-8 text-primary" />
                     </div>
-                    <Link href={`/profile/${userItem.id}`}>
-                      <h3 className="font-semibold mb-1 hover:text-primary transition-colors">
-                        {userItem.name}
-                      </h3>
-                    </Link>
+                    <h3 className="font-semibold mb-1 hover:text-primary transition-colors">
+                      {userItem.name}
+                    </h3>
                     <p className="text-text-secondary text-sm mb-3">
                       {userItem.institution || "ByteHub Member"}
                     </p>
-                    <Button variant="outline" size="sm">
-                      View Profile
-                    </Button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <Link href={`/profile/${userItem.id}`}>
+                        <Button variant="outline" size="sm">
+                          View Profile
+                        </Button>
+                      </Link>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -376,6 +434,16 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
+
+      {/* User Profile Modal */}
+      {selectedUserId && (
+        <UserProfileModal
+          userId={selectedUserId}
+          isOpen={isProfileModalOpen}
+          onClose={closeProfileModal}
+          currentUserId={user?.uid}
+        />
+      )}
     </Layout>
   );
 }

@@ -177,7 +177,7 @@ export function Navigation({ user }: NavigationProps) {
                       size="sm"
                       className="hidden md:flex w-10 h-10 p-0"
                     >
-                      <Settings className="w-5 h-5" />
+                      <Settings className="w-5 h-5 white" />
                     </Button>
                   </Link>
                 </div>

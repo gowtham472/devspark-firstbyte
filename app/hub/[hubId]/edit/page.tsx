@@ -67,6 +67,21 @@ interface FileVersion {
   changeNote?: string;
 }
 
+interface ActivityItem {
+  id: string;
+  type:
+    | "hub_created"
+    | "hub_updated"
+    | "file_uploaded"
+    | "file_deleted"
+    | "file_updated";
+  message: string;
+  userId: string;
+  userName?: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
 type TabType = "overview" | "files" | "settings" | "history";
 
 export default function HubEditPage() {
@@ -78,6 +93,7 @@ export default function HubEditPage() {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [hub, setHub] = useState<HubData | null>(null);
   const [files, setFiles] = useState<FileData[]>([]);
+  const [history, setHistory] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -92,8 +108,60 @@ export default function HubEditPage() {
   const [tagInput, setTagInput] = useState("");
 
   useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const [hubResponse, filesResponse, historyResponse] = await Promise.all(
+          [
+            fetch(`/api/hubs/${hubId}`),
+            fetch(`/api/files?hubId=${hubId}`),
+            fetch(`/api/hubs/${hubId}/history`),
+          ]
+        );
+
+        const hubResult = await hubResponse.json();
+        if (!hubResult.success) {
+          setError(hubResult.message || "Failed to fetch hub");
+          return;
+        }
+
+        const hubData = hubResult.data as HubData;
+
+        // Check if user is the owner
+        if (hubData.ownerId !== user?.uid) {
+          setError("You are not authorized to edit this hub");
+          return;
+        }
+
+        setHub(hubData);
+        setFormData({
+          title: hubData.title,
+          description: hubData.description,
+          tags: hubData.tags || [],
+          visibility: hubData.visibility,
+        });
+
+        const filesResult = await filesResponse.json();
+        if (filesResult.success) {
+          setFiles(filesResult.data || []);
+        }
+
+        const historyResult = await historyResponse.json();
+        if (historyResult.success) {
+          setHistory(historyResult.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching hub data:", error);
+        setError("An error occurred while loading the hub");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     if (!hubId || !user) return;
-    fetchHubData();
+    loadData();
   }, [hubId, user]);
 
   const fetchHubData = async () => {
@@ -538,48 +606,62 @@ export default function HubEditPage() {
 
         {activeTab === "history" && (
           <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-6">Version History</h2>
+            <h2 className="text-lg font-semibold mb-6">Activity History</h2>
             <div className="space-y-4">
-              {/* Mock version history - you can replace with actual data */}
-              <div className="border-l-2 border-gray-200 pl-4 space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full -ml-6 mt-2"></div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Hub updated</h3>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(hub.updatedAt)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Updated hub description and tags
-                    </p>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                      <User className="h-4 w-4" />
-                      <span>{user?.displayName || "You"}</span>
-                    </div>
-                  </div>
+              {history.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <History className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No activity history available</p>
                 </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="w-3 h-3 bg-green-500 rounded-full -ml-6 mt-2"></div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Hub created</h3>
-                      <span className="text-sm text-gray-500">
-                        {formatDate(hub.createdAt)}
-                      </span>
+              ) : (
+                <div className="border-l-2 border-gray-200 pl-4 space-y-4">
+                  {history.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-4">
+                      <div
+                        className={`w-3 h-3 rounded-full -ml-6 mt-2 ${
+                          activity.type === "hub_created"
+                            ? "bg-green-500"
+                            : activity.type === "hub_updated"
+                            ? "bg-blue-500"
+                            : activity.type === "file_uploaded"
+                            ? "bg-purple-500"
+                            : activity.type === "file_deleted"
+                            ? "bg-red-500"
+                            : "bg-gray-500"
+                        }`}
+                      ></div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-medium">{activity.message}</h3>
+                          <span className="text-sm text-gray-500">
+                            {formatDate(activity.timestamp)}
+                          </span>
+                        </div>
+                        {activity.metadata && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            {activity.type === "file_uploaded" &&
+                              activity.metadata.fileName && (
+                                <span>
+                                  File: {activity.metadata.fileName as string}
+                                </span>
+                              )}
+                            {activity.type === "hub_updated" &&
+                              activity.metadata.hubTitle && (
+                                <span>
+                                  Hub: {activity.metadata.hubTitle as string}
+                                </span>
+                              )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                          <User className="h-4 w-4" />
+                          <span>{activity.userName || "User"}</span>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Initial hub creation
-                    </p>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                      <User className="h-4 w-4" />
-                      <span>{user?.displayName || "You"}</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </Card>
         )}
