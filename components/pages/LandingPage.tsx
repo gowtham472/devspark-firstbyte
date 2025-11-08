@@ -1,7 +1,7 @@
 // components/pages/LandingPage.tsx
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 
 import {
@@ -55,6 +55,30 @@ const gridStyles = `
 export function LandingPage() {
   const { user } = useAuth();
 
+  // Theme detection
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== "undefined") {
+      const theme = localStorage.getItem("theme");
+      return theme === "dark";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    // Listen for theme changes
+    const observer = new MutationObserver(() => {
+      const theme = document.documentElement.getAttribute("data-theme");
+      setIsDark(theme === "dark");
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <>
       {/* CSS Styles */}
@@ -74,17 +98,25 @@ export function LandingPage() {
         {/* Animated Grid Background */}
         <div className="fixed inset-0 z-[-1] overflow-hidden">
           {/* Base gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-50/90 via-white to-blue-50/40"></div>
+          <div
+            className="absolute inset-0"
+            style={{
+              background: isDark
+                ? "linear-gradient(to bottom right, rgba(17, 24, 39, 0.95), rgba(31, 41, 55, 0.9), rgba(30, 58, 138, 0.3))"
+                : "linear-gradient(to bottom right, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 1), rgba(239, 246, 255, 0.4))",
+            }}
+          ></div>
 
           {/* Primary moving grid - main pattern */}
           <div className="absolute inset-0 opacity-60">
             <div
               className="absolute inset-0"
               style={{
-                backgroundImage: `
-                  linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
-                  linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px)
-                `,
+                backgroundImage: isDark
+                  ? `linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
+                     linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px)`
+                  : `linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+                     linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px)`,
                 backgroundSize: "40px 40px",
                 animation: "gridMove 25s linear infinite",
               }}
