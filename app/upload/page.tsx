@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { Suspense, useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Layout } from "@/components/layout/Layout";
@@ -34,7 +34,7 @@ interface HubData {
   updatedAt: string;
 }
 
-export default function UploadPage() {
+function UploadPageContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -563,5 +563,26 @@ export default function UploadPage() {
         </div>
       </Layout>
     </ProtectedRoute>
+  );
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense
+      fallback={
+        <Layout>
+          <ProtectedRoute>
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
+              </div>
+            </div>
+          </ProtectedRoute>
+        </Layout>
+      }
+    >
+      <UploadPageContent />
+    </Suspense>
   );
 }
