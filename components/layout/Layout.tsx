@@ -3,6 +3,7 @@
 
 import React from "react";
 import { Navigation } from "./Navigation";
+import Image from "next/image";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,9 +26,13 @@ export function Layout({ children, user }: LayoutProps) {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
-                <div className="w-6 h-6 bg-gradient-primary rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">B</span>
-                </div>
+                  <Image
+                    src="/logo.png"
+                    alt="ByteHub Logo"
+                    width={80}
+                    height={80}
+                    className="object-contain"
+                  />
                 <span className="font-display font-bold text-lg text-text-primary">
                   ByteHub
                 </span>

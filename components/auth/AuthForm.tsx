@@ -115,12 +115,6 @@ export function AuthForm() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">B</span>
-            </div>
-            <span className="font-display font-bold text-2xl text-text-primary">
-              ByteHub
-            </span>
           </div>
           <h1 className="text-2xl font-bold text-text-primary mb-2">
             {mode === "login" ? "Welcome back" : "Join ByteHub"}

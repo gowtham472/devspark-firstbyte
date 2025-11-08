@@ -5,9 +5,16 @@ import { createApiResponse, handleApiError, requireAuth } from '@/lib/api-utils'
 
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Debug: Log configuration (remove in production)
+console.log('Cloudinary Config:', {
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ? '✓ Set' : '✗ Missing',
+  api_key: process.env.CLOUDINARY_API_KEY ? '✓ Set' : '✗ Missing',
+  api_secret: process.env.CLOUDINARY_API_SECRET ? '✓ Set' : '✗ Missing',
 });
 
 // POST /api/upload - Upload file to Cloudinary and store metadata
