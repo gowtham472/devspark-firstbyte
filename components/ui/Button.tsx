@@ -25,12 +25,13 @@ export function Button({
 
   const variants = {
     primary:
-      "bg-[--color-primary] text-white hover:bg-blue-700 focus:ring-blue-500/20 shadow-lg hover:shadow-blue-500/25",
+      "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 focus:ring-blue-500/20 shadow-lg hover:shadow-blue-500/25 dark:bg-blue-500 dark:hover:bg-blue-600 dark:active:bg-blue-700 dark:text-white",
     secondary:
-      "bg-[--color-secondary] text-white hover:bg-orange-700 focus:ring-orange-500/20 shadow-lg hover:shadow-orange-500/25",
+      "bg-orange-600 text-white hover:bg-orange-700 active:bg-orange-800 focus:ring-orange-500/20 shadow-lg hover:shadow-orange-500/25 dark:bg-orange-500 dark:hover:bg-orange-600 dark:active:bg-orange-700 dark:text-white",
     outline:
-      "border-2 border-[--color-primary] text-[--color-primary] bg-transparent hover:bg-[--color-primary] hover:text-white focus:ring-blue-500/20",
-    ghost: "text-[--color-text-primary] hover:bg-[--color-border]",
+      "border-2 border-blue-600 text-blue-600 bg-transparent hover:bg-blue-600 hover:text-white active:bg-blue-700 focus:ring-blue-500/20 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-400 dark:hover:text-gray-900 dark:active:bg-blue-500",
+    ghost:
+      "text-gray-700 hover:bg-gray-100 active:bg-gray-200 dark:text-gray-200 dark:hover:bg-gray-800 dark:active:bg-gray-700",
   };
 
   const sizes = {

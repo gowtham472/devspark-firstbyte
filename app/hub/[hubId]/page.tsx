@@ -178,6 +178,83 @@ export default function HubPage() {
   const isOwner = user && hub && hub.ownerId === user.uid;
   const isStarred = user && hub && hub.starredBy?.includes(user.uid);
 
+  // Utility function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  // Utility function to get file type color
+  const getFileTypeColor = (fileType: string): string => {
+    const type = fileType.toLowerCase();
+    if (type.includes("pdf")) return "text-red-600 bg-red-50";
+    if (type.includes("doc") || type.includes("docx"))
+      return "text-blue-600 bg-blue-50";
+    if (type.includes("xls") || type.includes("xlsx"))
+      return "text-green-600 bg-green-50";
+    if (type.includes("ppt") || type.includes("pptx"))
+      return "text-orange-600 bg-orange-50";
+    if (type.includes("txt")) return "text-gray-600 bg-gray-50";
+    if (type.includes("image") || type.includes("jpg") || type.includes("png"))
+      return "text-purple-600 bg-purple-50";
+    return "text-blue-600 bg-blue-50";
+  };
+
+  const handleDownloadFile = async (file: FileData) => {
+    try {
+      // Create a temporary link element to trigger download
+      const link = document.createElement("a");
+      link.href = file.downloadUrl;
+      link.download = file.fileName || file.originalName || "download";
+      link.target = "_blank";
+
+      // Append to body, click, and remove
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Optional: Track download analytics
+      await fetch("/api/files/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: file.id,
+          hubId: hubId,
+          fileName: file.fileName,
+        }),
+      }).catch((error) => {
+        console.log("Download tracking failed:", error);
+        // Don't block download if tracking fails
+      });
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      alert("Failed to download file. Please try again.");
+    }
+  };
+
+  const handleDownloadAllFiles = async () => {
+    if (files.length === 0) return;
+
+    try {
+      // Download each file with a small delay to avoid overwhelming the browser
+      for (let i = 0; i < files.length; i++) {
+        await handleDownloadFile(files[i]);
+        // Add a small delay between downloads
+        if (i < files.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error("Error downloading all files:", error);
+      alert("Failed to download some files. Please try again.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -375,15 +452,28 @@ export default function HubPage() {
                 <FileText className="h-5 w-5 text-gray-500" />
                 <span className="font-medium">{files.length} files</span>
               </div>
-              {isOwner && (
-                <Button
-                  onClick={() => router.push(`/upload?hubId=${hubId}`)}
-                  size="sm"
-                >
-                  <Upload className="h-4 w-4 mr-1" />
-                  Upload files
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                {files.length > 0 && (
+                  <Button
+                    onClick={handleDownloadAllFiles}
+                    variant="outline"
+                    size="sm"
+                    title="Download all files"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download all
+                  </Button>
+                )}
+                {isOwner && (
+                  <Button
+                    onClick={() => router.push(`/upload?hubId=${hubId}`)}
+                    size="sm"
+                  >
+                    <Upload className="h-4 w-4 mr-1" />
+                    Upload files
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Files List */}
@@ -414,27 +504,56 @@ export default function HubPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <FileIcon className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <h4 className="font-medium text-gray-900">
+                        <div
+                          className={`p-2 rounded-lg ${getFileTypeColor(
+                            file.fileType
+                          )}`}
+                        >
+                          <FileIcon className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <button
+                            onClick={() => handleDownloadFile(file)}
+                            className="font-medium text-gray-900 hover:text-blue-600 hover:underline text-left transition-colors block"
+                            title="Click to download"
+                          >
                             {file.fileName}
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            {(file.fileSize / 1024).toFixed(1)} KB • Updated{" "}
-                            {new Date(file.uploadedAt).toLocaleDateString()} by{" "}
-                            {file.uploaderName || "User"}
-                          </p>
+                          </button>
+                          <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <span>{formatFileSize(file.fileSize)}</span>
+                            <span>•</span>
+                            <span className="capitalize">
+                              {file.fileType
+                                .replace("/", " ")
+                                .replace("application", "")}
+                            </span>
+                            <span>•</span>
+                            <span>
+                              Updated{" "}
+                              {new Date(file.uploadedAt).toLocaleDateString()}
+                            </span>
+                            <span>by {file.uploaderName || "User"}</span>
+                          </div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="View file history"
+                        >
                           <History className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDownloadFile(file)}
+                          title="Download file"
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" title="More options">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </div>

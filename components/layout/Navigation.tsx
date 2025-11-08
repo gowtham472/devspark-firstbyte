@@ -18,7 +18,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui";
-import { cn } from "@/lib/utils";
 
 interface NavigationProps {
   user?: {
@@ -82,17 +81,28 @@ export function Navigation({ user }: NavigationProps) {
     if (requiresAuth && !user) return null;
     const isActive = pathname === href;
 
+    const linkStyles = isActive
+      ? {
+          backgroundColor: "#3b82f6",
+          color: "#ffffff",
+        }
+      : {
+          color: isDark ? "#f3f4f6" : "#374151",
+          backgroundColor: "transparent",
+        };
+
     return (
       <Link
         href={href}
         onClick={() => setIsMobileMenuOpen(false)}
-        className={cn(
-          "flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200",
-          "text-sm font-medium",
-          isActive
-            ? "bg-[var(--color-primary)] text-white"
-            : "text-[var(--color-text-primary)] hover:bg-[var(--color-border)] hover:text-[var(--color-primary)]"
-        )}
+        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 text-sm font-medium ${
+          !isActive
+            ? isDark
+              ? "hover:bg-gray-700 hover:text-blue-400"
+              : "hover:bg-gray-100 hover:text-blue-600"
+            : ""
+        }`}
+        style={linkStyles}
       >
         <Icon className="w-5 h-5" />
         <span>{label}</span>
@@ -101,7 +111,15 @@ export function Navigation({ user }: NavigationProps) {
   };
 
   return (
-    <nav className="bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-50 backdrop-blur-md bg-[var(--color-surface)]/90">
+    <nav
+      className="sticky top-0 z-50 backdrop-blur-md"
+      style={{
+        backgroundColor: isDark
+          ? "rgba(17, 24, 39, 0.9)"
+          : "rgba(255, 255, 255, 0.9)",
+        borderBottom: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* --- Logo Section --- */}
@@ -113,7 +131,10 @@ export function Navigation({ user }: NavigationProps) {
               height={80}
               className="object-contain"
             />
-            <span className="font-bold text-lg text-[var(--color-text-primary)]">
+            <span
+              className="font-bold text-lg"
+              style={{ color: isDark ? "#f3f4f6" : "#111827" }}
+            >
               ByteHub
             </span>
           </Link>
@@ -133,11 +154,15 @@ export function Navigation({ user }: NavigationProps) {
               size="sm"
               onClick={toggleDarkMode}
               className="w-10 h-10 p-0"
+              style={{
+                color: isDark ? "#f3f4f6" : "#374151",
+                backgroundColor: "transparent",
+              }}
             >
               {isDark ? (
-                <Sun className="w-5 h-5 text-white" />
+                <Sun className="w-5 h-5" />
               ) : (
-                <Moon className="w-5 h-5 text-white" />
+                <Moon className="w-5 h-5" />
               )}
             </Button>
 
@@ -147,7 +172,11 @@ export function Navigation({ user }: NavigationProps) {
                 <Link href="/upload">
                   <Button
                     size="sm"
-                    className="hidden sm:flex bg-[var(--color-primary)] hover:bg-[#4aa4ef] text-white"
+                    className="hidden sm:flex"
+                    style={{
+                      backgroundColor: "#3b82f6",
+                      color: "#ffffff",
+                    }}
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Hub
@@ -156,7 +185,10 @@ export function Navigation({ user }: NavigationProps) {
 
                 <div className="flex items-center gap-3">
                   <Link href={`/profile/${user.username}`}>
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-[var(--color-primary)] flex items-center justify-center">
+                    <div
+                      className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center"
+                      style={{ backgroundColor: "#3b82f6" }}
+                    >
                       {user.avatar ? (
                         <Image
                           src={user.avatar}
@@ -176,8 +208,12 @@ export function Navigation({ user }: NavigationProps) {
                       variant="ghost"
                       size="sm"
                       className="hidden md:flex w-10 h-10 p-0"
+                      style={{
+                        color: isDark ? "#f3f4f6" : "#374151",
+                        backgroundColor: "transparent",
+                      }}
                     >
-                      <Settings className="w-5 h-5 text-white" />
+                      <Settings className="w-5 h-5" />
                     </Button>
                   </Link>
                 </div>
@@ -192,7 +228,10 @@ export function Navigation({ user }: NavigationProps) {
                 <Link href="/auth?mode=register">
                   <Button
                     size="sm"
-                    className="bg-[var(--color-primary)] hover:bg-[#4aa4ef] text-white"
+                    style={{
+                      backgroundColor: "#3b82f6",
+                      color: "#ffffff",
+                    }}
                   >
                     Get Started
                   </Button>
@@ -218,7 +257,12 @@ export function Navigation({ user }: NavigationProps) {
 
         {/* --- Mobile Menu --- */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-3 border-t border-[var(--color-border)] space-y-2">
+          <div
+            className="md:hidden py-3 space-y-2"
+            style={{
+              borderTop: `1px solid ${isDark ? "#374151" : "#e5e7eb"}`,
+            }}
+          >
             {navItems.map((item) => (
               <NavLink key={item.href} {...item} />
             ))}
@@ -227,14 +271,16 @@ export function Navigation({ user }: NavigationProps) {
               <>
                 <Link
                   href="/upload"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  style={{ color: isDark ? "#f3f4f6" : "#374151" }}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Plus className="w-5 h-5" /> Create Hub
                 </Link>
                 <Link
                   href="/settings"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-[var(--color-text-primary)] hover:text-[var(--color-primary)]"
+                  className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  style={{ color: isDark ? "#f3f4f6" : "#374151" }}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Settings className="w-5 h-5" /> Settings

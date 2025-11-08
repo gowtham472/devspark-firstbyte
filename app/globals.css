@@ -79,7 +79,7 @@
   border-color: var(--border);
 }
 
-button{
+button .ac {
   background: var(--primary);
 }
 
