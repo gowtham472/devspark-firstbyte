@@ -135,9 +135,9 @@ export function Navigation({ user }: NavigationProps) {
               className="w-10 h-10 p-0"
             >
               {isDark ? (
-                <Sun className="w-5 h-5" />
+                <Sun className="w-5 h-5 text-white" />
               ) : (
-                <Moon className="w-5 h-5" />
+                <Moon className="w-5 h-5 text-white" />
               )}
             </Button>
 
@@ -177,7 +177,7 @@ export function Navigation({ user }: NavigationProps) {
                       size="sm"
                       className="hidden md:flex w-10 h-10 p-0"
                     >
-                      <Settings className="w-5 h-5 white" />
+                      <Settings className="w-5 h-5 text-white" />
                     </Button>
                   </Link>
                 </div>
